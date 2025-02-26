@@ -5,54 +5,54 @@
 #define MAX_SUB_BRANCHES 5
 
 typedef struct {
-    double resistances[MAX_RESISTORS]; // Resistors in this sub-branch
-    int count;                         // Number of resistors in this sub-branch
+    double resistances[MAX_RESISTORS];
+    int count;
 } SubBranch;
 
 typedef struct {
-    SubBranch sub_branches[MAX_SUB_BRANCHES]; // Sub-branches in this branch
-    int sub_count;                            // Number of sub-branches in this branch
+    SubBranch sub_branches[MAX_SUB_BRANCHES];
+    int sub_count;
 } Branch;
 
-// Function to calculate parallel resistance
 double parallel_resistance(double r1, double r2) {
     return (r1 * r2) / (r1 + r2);
 }
 
-// Function to calculate equivalent resistance for a branch
 double calculate_branch_resistance(Branch branch) {
     double total = 0;
     for (int i = 0; i < branch.sub_count; i++) {
         double sub_total = 0;
         for (int j = 0; j < branch.sub_branches[i].count; j++) {
-            sub_total += branch.sub_branches[i].resistances[j]; // Series resistance in sub-branch
+            sub_total += branch.sub_branches[i].resistances[j];
         }
         if (total == 0) {
             total = sub_total;
         } else {
-            total = parallel_resistance(total, sub_total); // Parallel resistance between sub-branches
+            total = parallel_resistance(total, sub_total);
         }
     }
     return total;
 }
 
-// Function to draw the circuit
 void draw_circuit(Branch branches[], int branch_count) {
-    printf("\nCircuit Representation:\n");
-    printf(" ----l| ----\n");
+    printf("\nCircuit Diagram:\n");
+    printf("┌───l|────┐\n");
     for (int i = 0; i < branch_count; i++) {
-        printf("|           |\n");
+        printf("│         │\n");
+        printf("├──");
         for (int sb = 0; sb < branches[i].sub_count; sb++) {
             for (int j = 0; j < branches[i].sub_branches[sb].count; j++) {
-                printf(" ----^^^---- ");
+                printf("┬[R%.2f]─", branches[i].sub_branches[sb].resistances[j]);
             }
+            printf("┤");
             if (sb < branches[i].sub_count - 1) {
-                printf(" || "); // Indicate parallel sub-branches
+                printf("──┴──");
             }
         }
         printf("\n");
     }
-    printf("|           |\n");
+    printf("│         │\n");
+    printf("└─────────┘\n");
 }
 
 int main() {
@@ -65,11 +65,10 @@ int main() {
     scanf("%lf", &voltage);
 
     do {
-        printf("\nAdding resistors to branch %d:\n", branch_count + 1);
-        printf("Enter the resistance value (in ohms): ");
+        printf("\n--- Configuring Branch %d (Parallel Path) ---\n", branch_count + 1);
+        printf("Enter the first resistor value (ohms): ");
         scanf("%lf", &resistance);
 
-        // Initialize the first sub-branch in the current branch
         branches[branch_count].sub_branches[0].resistances[0] = resistance;
         branches[branch_count].sub_branches[0].count = 1;
         branches[branch_count].sub_count = 1;
@@ -78,41 +77,50 @@ int main() {
 
         char add_more;
         do {
-            printf("\nDo you want to add another resistor to this branch? (Y/N): ");
-            scanf(" %c", &add_more);
+            printf("\nAdd another resistor in this branch?\n");
+            printf("1. Series (same path)\n2. Parallel (new path)\n3. Done\nChoice: ");
+            int option;
+            scanf("%d", &option);
 
-            if (add_more == 'Y' || add_more == 'y') {
-                int series_parallel;
-                printf("Add in series (1) or parallel (2) to the existing resistor(s)?: ");
-                scanf("%d", &series_parallel);
-
-                if (series_parallel == 1) { // Series
-                    printf("Enter the resistance value (in ohms): ");
-                    scanf("%lf", &resistance);
-                    branches[branch_count].sub_branches[0].resistances[branches[branch_count].sub_branches[0].count++] = resistance;
-                } else if (series_parallel == 2) { // Parallel
-                    printf("Enter the resistance value (in ohms): ");
-                    scanf("%lf", &resistance);
-                    if (branches[branch_count].sub_count < MAX_SUB_BRANCHES) {
-                        branches[branch_count].sub_branches[branches[branch_count].sub_count].resistances[0] = resistance;
-                        branches[branch_count].sub_branches[branches[branch_count].sub_count].count = 1;
-                        branches[branch_count].sub_count++;
-                    } else {
-                        printf("Maximum sub-branches reached in this branch!\n");
-                    }
+            if (option == 1) {
+                printf("Enter resistance value (ohms): ");
+                scanf("%lf", &resistance);
+                if (branches[branch_count].sub_branches[0].count < MAX_RESISTORS) {
+                    int idx = branches[branch_count].sub_branches[0].count;
+                    branches[branch_count].sub_branches[0].resistances[idx] = resistance;
+                    branches[branch_count].sub_branches[0].count++;
+                } else {
+                    printf("Max resistors in this path reached!\n");
                 }
-                draw_circuit(branches, branch_count + 1);
+            } else if (option == 2) {
+                printf("Enter resistance value (ohms): ");
+                scanf("%lf", &resistance);
+                if (branches[branch_count].sub_count < MAX_SUB_BRANCHES) {
+                    int new_sub = branches[branch_count].sub_count;
+                    branches[branch_count].sub_branches[new_sub].resistances[0] = resistance;
+                    branches[branch_count].sub_branches[new_sub].count = 1;
+                    branches[branch_count].sub_count++;
+                } else {
+                    printf("Max parallel paths reached!\n");
+                }
+            } else {
+                break;
             }
-        } while ((add_more == 'Y' || add_more == 'y') && branches[branch_count].sub_count < MAX_SUB_BRANCHES);
+
+            draw_circuit(branches, branch_count + 1);
+        } while (1);
 
         branch_count++;
 
-        printf("\nDo you want to add another branch? (Y/N): ");
-        scanf(" %c", &choice);
+        if (branch_count < MAX_BRANCHES) {
+            printf("\nAdd another parallel branch? (Y/N): ");
+            scanf(" %c", &choice);
+        } else {
+            printf("Maximum branches reached!\n");
+            break;
+        }
+    } while (choice == 'Y' || choice == 'y');
 
-    } while ((choice == 'Y' || choice == 'y') && branch_count < MAX_BRANCHES);
-
-    // Compute equivalent resistance
     double total_resistance = 0;
     for (int i = 0; i < branch_count; i++) {
         double branch_resistance = calculate_branch_resistance(branches[i]);
@@ -123,12 +131,11 @@ int main() {
         }
     }
 
-    // Compute current
     double current = voltage / total_resistance;
 
-    // Display results
-    printf("\nEquivalent Resistance: %.2f ohms\n", total_resistance);
-    printf("Total Circuit Current: %.2f A\n", current);
+    printf("\n--- Results ---\n");
+    printf("Total Equivalent Resistance: %.2f ohms\n", total_resistance);
+    printf("Total Current from Source: %.2f A\n", current);
 
     return 0;
 }
